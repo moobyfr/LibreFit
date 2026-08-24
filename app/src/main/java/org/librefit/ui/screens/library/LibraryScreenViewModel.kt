@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.librefit.db.entity.Workout
 import org.librefit.db.repository.RoutineTemplateRepository
+import org.librefit.db.repository.UserPreferencesRepository
 import org.librefit.db.repository.WorkoutRepository
 import org.librefit.di.qualifiers.IoDispatcher
 import org.librefit.enums.SetMode
@@ -53,6 +55,7 @@ private val LIBRARY_CATEGORY_KEYS = listOf(
 class LibraryScreenViewModel @Inject constructor(
     private val routineTemplateRepository: RoutineTemplateRepository,
     private val workoutRepository: WorkoutRepository,
+    private val userPreferencesRepository: UserPreferencesRepository,
     @param:ApplicationContext private val context: Context,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -74,10 +77,14 @@ class LibraryScreenViewModel @Inject constructor(
 
     /**
      * Routines of the library grouped by category, following [LIBRARY_CATEGORY_KEYS] order.
-     * Categories without routines are omitted.
+     * Categories without routines are omitted. Localized strings are resolved at emission time
+     * and re-resolved on language change (the ViewModel outlives activity recreations).
      */
     val libraryCategories: StateFlow<List<UiLibraryCategory>> =
-        routineTemplateRepository.libraryWorkouts.map { workoutsWithExercisesAndSets ->
+        combine(
+            routineTemplateRepository.libraryWorkouts,
+            userPreferencesRepository.language
+        ) { workoutsWithExercisesAndSets, _ ->
             val templatesById =
                 routineTemplateRepository.routineTemplates.associateBy { it.id }
 
